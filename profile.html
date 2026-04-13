@@ -73,7 +73,7 @@ textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cb
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAp9xtIX74D6Heihn6O-7muB0a6mbQno7Y",
@@ -96,16 +96,34 @@ textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cb
         if (user) {
             document.getElementById("welcomeText").innerText = `Welcome back, ${user.displayName || "Commander"}`;
             currentUserDocRef = doc(db, "users", user.uid);
-            await loadUserData();
+            await loadUserData(user);
         } else {
             window.location.href = "login-signup.html";
         }
     });
 
-    async function loadUserData() {
-        const docSnap = await getDoc(currentUserDocRef);
-        if (docSnap.exists()) {
-            userData = docSnap.data();
+    async function loadUserData(user) {
+        try {
+            const docSnap = await getDoc(currentUserDocRef);
+            
+            if (docSnap.exists()) {
+                // Document found! Load the data.
+                userData = docSnap.data();
+            } else {
+                // Account exists, but no database document! Let's create one right now.
+                console.log("No database document found. Creating one...");
+                userData = {
+                    username: user.displayName || "Commander",
+                    wins: 0, losses: 0, attacks: 0, defenses: 0,
+                    favoriteUnit: "None", favoriteUnitRank: "Rookie",
+                    battlesPlayedToday: 0,
+                    lastBattleDate: new Date().toISOString().split('T')[0],
+                    isSpecialUser: false 
+                };
+                await setDoc(currentUserDocRef, userData);
+            }
+
+            // Now run the UI updates
             let totalGames = userData.wins + userData.losses;
             let winRate = totalGames > 0 ? Math.round((userData.wins / totalGames) * 100) : 0;
 
@@ -129,11 +147,14 @@ textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cb
             } else {
                 document.getElementById("statEnergy").innerText = `${battlesLeft}/8`;
             }
+
+        } catch (error) {
+            // THIS will tell you if Firebase rules/permissions are blocking you!
+            alert("CRITICAL FIREBASE ERROR: " + error.message);
         }
     }
 
     document.getElementById("battleBtn").addEventListener("click", async () => {
-        // OFFLINE BYPASS: Lets you test without the database fully connected
         if (!userData) {
             alert("Database not connected. Launching Offline Test Mode!");
             window.location.href = "battle.html";
