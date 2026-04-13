@@ -7,8 +7,13 @@
 <style>
 body { margin: 0; font-family: Arial, sans-serif; background: #f8fafc; color: #334155; }
 .header { padding: 20px; text-align: center; background: #ffffff; border-bottom: 2px solid #e2e8f0; }
-.header h2 { margin: 0; color: #0f172a; }
-.badge { display: inline-block; padding: 4px 8px; margin-top: 5px; background: #fbbf24; color: #78350f; border-radius: 12px; font-size: 12px; font-weight: bold; display: none; }
+
+/* Avatar & Name Styles Added */
+.avatar { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #38bdf8; margin: 0 auto 10px; display: block; object-fit: cover; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.header h2 { margin: 0; color: #0f172a; font-size: 22px; }
+.welcome-text { color: #64748b; font-size: 13px; margin-top: 5px; }
+
+.badge { display: inline-block; padding: 4px 8px; margin-top: 8px; background: #fbbf24; color: #78350f; border-radius: 12px; font-size: 12px; font-weight: bold; display: none; }
 .section { padding: 15px; max-width: 500px; margin: auto; }
 .card { background: #ffffff; padding: 15px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
 .card h3 { margin-top: 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; color: #0f172a; }
@@ -16,17 +21,20 @@ body { margin: 0; font-family: Arial, sans-serif; background: #f8fafc; color: #3
 .stats-grid p { margin: 5px 0; }
 button { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #38bdf8; color: black; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px;}
 .btn-battle { background: #22c55e; color: white; }
-.btn-donate { background: #ef4444; color: white; }
 .btn-logout { background: #94a3b8; color: white; margin-top: 20px; }
 textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; margin-top: 10px; resize: vertical; box-sizing: border-box; }
 .dev-notes { font-size: 13px; color: #64748b; background: #f1f5f9; padding: 10px; border-radius: 6px; }
+
+/* Trakteer Container formatting */
+.trakteer-container { display: flex; justify-content: center; margin-top: 15px; }
 </style>
 </head>
 <body>
 
 <div class="header">
-    <h2>Commander Profile</h2>
-    <p id="welcomeText">Loading Commander Data...</p>
+    <img id="userAvatar" class="avatar" src="https://ui-avatars.com/api/?name=C&background=38bdf8&color=fff" alt="Commander Avatar">
+    <h2 id="userNameDisplay">Loading...</h2>
+    <p id="welcomeText" class="welcome-text">Syncing database...</p>
     <div id="badgeDisplay" class="badge">⭐ Special Supporter</div>
 </div>
 
@@ -50,8 +58,11 @@ textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cb
 
     <div class="card">
         <h3>Support Development</h3>
-        <p style="font-size: 13px;">Unlock unlimited battles & exclusive supporter badge to help maintain the server!</p>
-        <button id="donateBtn" class="btn-donate">☕ Support via Trakteer</button>
+        <p style="font-size: 13px; text-align: center;">Unlock unlimited battles & exclusive supporter badge to help maintain the server!</p>
+        
+        <div class="trakteer-container">
+            <script type='text/javascript' src='https://edge-cdn.trakteer.id/js/embed/trbtn.min.js?v=14-05-2025'></script><script type='text/javascript'>(function(){var trbtnId=trbtn.init('Dukung Saya di Trakteer','#be1e2d','https://trakteer.id/cloudeight.main5tudio.dev','https://edge-cdn.trakteer.id/images/embed/trbtn-icon.png?v=14-05-2025','40');trbtn.draw(trbtnId);})();</script>
+        </div>
     </div>
 
     <div class="card">
@@ -94,7 +105,18 @@ textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cb
 
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            document.getElementById("welcomeText").innerText = `Welcome back, ${user.displayName || "Commander"}`;
+            // Update the UI with Avatar and Name
+            const displayName = user.displayName || "Commander";
+            document.getElementById("userNameDisplay").innerText = displayName;
+            document.getElementById("welcomeText").innerText = "Ready for deployment.";
+            
+            // Set Avatar: check if user has photoURL, otherwise use UI-Avatar API
+            if(user.photoURL) {
+                document.getElementById("userAvatar").src = user.photoURL;
+            } else {
+                document.getElementById("userAvatar").src = `https://ui-avatars.com/api/?name=${displayName}&background=38bdf8&color=fff&size=128`;
+            }
+
             currentUserDocRef = doc(db, "users", user.uid);
             await loadUserData(user);
         } else {
@@ -107,10 +129,8 @@ textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cb
             const docSnap = await getDoc(currentUserDocRef);
             
             if (docSnap.exists()) {
-                // Document found! Load the data.
                 userData = docSnap.data();
             } else {
-                // Account exists, but no database document! Let's create one right now.
                 console.log("No database document found. Creating one...");
                 userData = {
                     username: user.displayName || "Commander",
@@ -149,7 +169,6 @@ textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cb
             }
 
         } catch (error) {
-            // THIS will tell you if Firebase rules/permissions are blocking you!
             alert("CRITICAL FIREBASE ERROR: " + error.message);
         }
     }
@@ -171,7 +190,6 @@ textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cb
         window.location.href = "battle.html"; 
     });
 
-    document.getElementById("donateBtn").addEventListener("click", () => { window.open("https://trakteer.id/", "_blank"); });
     document.getElementById("logoutBtn").addEventListener("click", () => { signOut(auth).then(() => { window.location.href = "login-signup.html"; }); });
     document.getElementById("sendCommentBtn").addEventListener("click", () => {
         const comment = document.getElementById("devComment").value;
