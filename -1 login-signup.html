@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battle System Login</title>
+<link rel="manifest" href="manifest.json">
+<style>
+body { margin: 0; font-family: Arial, sans-serif; background: #ffffff; color: #3d1717; display: flex; flex-direction: column; min-height: 100vh; }
+.header { text-align: center; padding: 20px; }
+.header h1 { margin: 0; font-size: 24px; }
+.header p { opacity: 0.8; font-size: 7px; font-weight: bold; font-style: italic; }
+.container { flex: 1; display: flex; justify-content: center; align-items: center; }
+.card { background: #ffffff; padding: 20px; border-radius: 12px; color: gray; width: 90%; max-width: 400px; }
+input { width: 70%; padding: 10px; margin: 6px 0; border-radius: 6px; color: #918080; border: 1px solid #ccc; }
+button { width: 100%; padding: 10px; margin-top: 10px; border: none; border-radius: 6px; background: #38bdf8; color: black; font-weight: bold; cursor: pointer; }
+.social button { background: #334155; color: white; }
+.switch { text-align: center; margin-top: 10px; cursor: pointer; color: #38bdf8; }
+.footer { text-align: center; padding: 10px; font-size: 12px; opacity: 0.6; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>GLITTZ OF HORIZON</h1>
+    <p>Pilih Unitmu. Hamparan Area. Strategize. Alur Unitmu. Track Recordmu.</p>
+</div>
+
+<div class="container">
+    <div class="card">
+        <div id="loginBox">
+            <h3>Login</h3>
+            <input type="email" id="loginEmail" placeholder="Email">
+            <input type="password" id="loginPassword" placeholder="Password">
+            <button id="loginBtn">Login</button>
+            <div class="social">
+                <button id="googleBtn">Continue with Google (Coming Soon)</button>
+                <button id="fbBtn">Continue with Facebook (Coming Soon)</button>
+            </div>
+            <div class="switch" id="showRegisterBtn">No account? Register</div>
+        </div>
+
+        <div id="registerBox" style="display:none;">
+            <h3>Register</h3>
+            <input type="text" id="regUsername" placeholder="Username">
+            <input type="email" id="regEmail" placeholder="Email">
+            <input type="password" id="regPassword" placeholder="Password">
+            <button id="registerBtn">Create Account</button>
+            <div class="switch" id="showLoginBtn">Already have account? Login</div>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    <p>Dev: main5tudio.dev | About | Privacy</p>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAp9xtIX74D6Heihn6O-7muB0a6mbQno7Y",
+      authDomain: "glittz-of-horizon.firebaseapp.com",
+      projectId: "glittz-of-horizon",
+      storageBucket: "glittz-of-horizon.firebasestorage.app",
+      messagingSenderId: "862322605914",
+      appId: "1:862322605914:web:6f2c26e083dee7857d3d63",
+      measurementId: "G-T61YZTLT53"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const loginBox = document.getElementById("loginBox");
+    const registerBox = document.getElementById("registerBox");
+
+    document.getElementById("showRegisterBtn").addEventListener("click", () => {
+        loginBox.style.display = "none";
+        registerBox.style.display = "block";
+    });
+
+    document.getElementById("showLoginBtn").addEventListener("click", () => {
+        loginBox.style.display = "block";
+        registerBox.style.display = "none";
+    });
+
+    document.getElementById("loginBtn").addEventListener("click", () => {
+        const email = document.getElementById("loginEmail").value;
+        const password = document.getElementById("loginPassword").value;
+        signInWithEmailAndPassword(auth, email, password)
+            .then(() => { window.location.href = "profile.html"; })
+            .catch((error) => { alert("Error: " + error.message); });
+    });
+
+    document.getElementById("registerBtn").addEventListener("click", async () => {
+        const username = document.getElementById("regUsername").value;
+        const email = document.getElementById("regEmail").value;
+        const password = document.getElementById("regPassword").value;
+
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            await updateProfile(user, { displayName: username });
+            await setDoc(doc(db, "users", user.uid), {
+                username: username,
+                wins: 0, losses: 0, attacks: 0, defenses: 0,
+                favoriteUnit: "None", favoriteUnitRank: "Rookie",
+                battlesPlayedToday: 0,
+                lastBattleDate: new Date().toISOString().split('T')[0],
+                isSpecialUser: false 
+            });
+            alert("Account created! Let's build your squad.");
+            window.location.href = "profile.html";
+        } catch (error) { alert("Error: " + error.message); }
+    });
+</script>
+</body>
+</html>
