@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commander Profile</title>
+<style>
+body { margin: 0; font-family: Arial, sans-serif; background: #f8fafc; color: #334155; }
+.header { padding: 20px; text-align: center; background: #ffffff; border-bottom: 2px solid #e2e8f0; }
+
+/* Avatar & Name Styles Added */
+.avatar { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #38bdf8; margin: 0 auto 10px; display: block; object-fit: cover; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.header h2 { margin: 0; color: #0f172a; font-size: 22px; }
+.welcome-text { color: #64748b; font-size: 13px; margin-top: 5px; }
+
+.badge { display: inline-block; padding: 4px 8px; margin-top: 8px; background: #fbbf24; color: #78350f; border-radius: 12px; font-size: 12px; font-weight: bold; display: none; }
+.section { padding: 15px; max-width: 500px; margin: auto; }
+.card { background: #ffffff; padding: 15px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+.card h3 { margin-top: 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; color: #0f172a; }
+.stats-grid { display: grid; grid-template-columns: 50% 50%; gap: 10px; font-size: 14px; }
+.stats-grid p { margin: 5px 0; }
+button { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #38bdf8; color: black; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px;}
+.btn-battle { background: #22c55e; color: white; }
+.btn-logout { background: #94a3b8; color: white; margin-top: 20px; }
+textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; margin-top: 10px; resize: vertical; box-sizing: border-box; }
+.dev-notes { font-size: 13px; color: #64748b; background: #f1f5f9; padding: 10px; border-radius: 6px; }
+
+/* Trakteer Container formatting */
+.trakteer-container { display: flex; justify-content: center; margin-top: 15px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <img id="userAvatar" class="avatar" src="https://ui-avatars.com/api/?name=C&background=38bdf8&color=fff" alt="Commander Avatar">
+    <h2 id="userNameDisplay">Loading...</h2>
+    <p id="welcomeText" class="welcome-text">Syncing database...</p>
+    <div id="badgeDisplay" class="badge">⭐ Special Supporter</div>
+</div>
+
+<div class="section">
+    <div class="card">
+        <h3>Combat Statistics</h3>
+        <div class="stats-grid">
+            <p><strong>Wins:</strong> <span id="statWins">0</span></p>
+            <p><strong>Losses:</strong> <span id="statLosses">0</span></p>
+            <p><strong>Win Rate:</strong> <span id="statWinRate">0%</span></p>
+            <p><strong>Rank:</strong> <span id="statRank">Rookie</span></p>
+            <p><strong>Fav Unit:</strong> <span id="statFavUnit">None</span></p>
+            <p><strong>Energy:</strong> <span id="statEnergy">8/8</span></p>
+        </div>
+    </div>
+
+    <div class="card">
+        <button id="battleBtn" class="btn-battle">⚔️ Engage Battle</button>
+        <p style="font-size: 11px; text-align: center; color: #64748b; margin-top: 8px;">Basic limit: 8 Battles/Day</p>
+    </div>
+
+    <div class="card">
+        <h3>Support Development</h3>
+        <p style="font-size: 13px; text-align: center;">Unlock unlimited battles & exclusive supporter badge to help maintain the server!</p>
+        
+        <div class="trakteer-container">
+            <script type='text/javascript' src='https://edge-cdn.trakteer.id/js/embed/trbtn.min.js?v=14-05-2025'></script><script type='text/javascript'>(function(){var trbtnId=trbtn.init('Dukung Saya di Trakteer','#be1e2d','https://trakteer.id/cloudeight.main5tudio.dev','https://edge-cdn.trakteer.id/images/embed/trbtn-icon.png?v=14-05-2025','40');trbtn.draw(trbtnId);})();</script>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Message the Developer</h3>
+        <textarea id="devComment" rows="3" placeholder="Found a bug? Have an idea? Write it here..."></textarea>
+        <button id="sendCommentBtn" style="background:#3b82f6; color:white;">Send Feedback</button>
+        <h4 style="margin-top:20px;">Roadmap & Upcoming Features:</h4>
+        <div class="dev-notes">
+            <ul>
+                <li>v1.1: Terrain & Cover Effects implementation</li>
+                <li>v1.2: Global Leaderboards</li>
+                <li>v1.3: Custom Variable Adjustment Panel</li>
+            </ul>
+        </div>
+    </div>
+    <button id="logoutBtn" class="btn-logout">Logout</button>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAp9xtIX74D6Heihn6O-7muB0a6mbQno7Y",
+      authDomain: "glittz-of-horizon.firebaseapp.com",
+      projectId: "glittz-of-horizon",
+      storageBucket: "glittz-of-horizon.firebasestorage.app",
+      messagingSenderId: "862322605914",
+      appId: "1:862322605914:web:6f2c26e083dee7857d3d63",
+      measurementId: "G-T61YZTLT53"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUserDocRef = null;
+    let userData = null;
+
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            // Update the UI with Avatar and Name
+            const displayName = user.displayName || "Commander";
+            document.getElementById("userNameDisplay").innerText = displayName;
+            document.getElementById("welcomeText").innerText = "Ready for deployment.";
+            
+            // Set Avatar: check if user has photoURL, otherwise use UI-Avatar API
+            if(user.photoURL) {
+                document.getElementById("userAvatar").src = user.photoURL;
+            } else {
+                document.getElementById("userAvatar").src = `https://ui-avatars.com/api/?name=${displayName}&background=38bdf8&color=fff&size=128`;
+            }
+
+            currentUserDocRef = doc(db, "users", user.uid);
+            await loadUserData(user);
+        } else {
+            window.location.href = "login-signup.html";
+        }
+    });
+
+    async function loadUserData(user) {
+        try {
+            const docSnap = await getDoc(currentUserDocRef);
+            
+            if (docSnap.exists()) {
+                userData = docSnap.data();
+            } else {
+                console.log("No database document found. Creating one...");
+                userData = {
+                    username: user.displayName || "Commander",
+                    wins: 0, losses: 0, attacks: 0, defenses: 0,
+                    favoriteUnit: "None", favoriteUnitRank: "Rookie",
+                    battlesPlayedToday: 0,
+                    lastBattleDate: new Date().toISOString().split('T')[0],
+                    isSpecialUser: false 
+                };
+                await setDoc(currentUserDocRef, userData);
+            }
+
+            // Now run the UI updates
+            let totalGames = userData.wins + userData.losses;
+            let winRate = totalGames > 0 ? Math.round((userData.wins / totalGames) * 100) : 0;
+
+            document.getElementById("statWins").innerText = userData.wins;
+            document.getElementById("statLosses").innerText = userData.losses;
+            document.getElementById("statWinRate").innerText = winRate + "%";
+            document.getElementById("statRank").innerText = userData.favoriteUnitRank;
+            document.getElementById("statFavUnit").innerText = userData.favoriteUnit;
+
+            const today = new Date().toISOString().split('T')[0];
+            if (userData.lastBattleDate !== today) {
+                userData.battlesPlayedToday = 0;
+                userData.lastBattleDate = today;
+                await updateDoc(currentUserDocRef, { battlesPlayedToday: 0, lastBattleDate: today });
+            }
+
+            let battlesLeft = 8 - userData.battlesPlayedToday;
+            if (userData.isSpecialUser) {
+                document.getElementById("statEnergy").innerText = "Unlimited (Supporter)";
+                document.getElementById("badgeDisplay").style.display = "inline-block";
+            } else {
+                document.getElementById("statEnergy").innerText = `${battlesLeft}/8`;
+            }
+
+        } catch (error) {
+            alert("CRITICAL FIREBASE ERROR: " + error.message);
+        }
+    }
+
+    document.getElementById("battleBtn").addEventListener("click", async () => {
+        if (!userData) {
+            alert("Database not connected. Launching Offline Test Mode!");
+            window.location.href = "battle.html";
+            return;
+        }
+
+        if (!userData.isSpecialUser && userData.battlesPlayedToday >= 8) {
+            alert("Commander, you are out of daily energy! Support us on Trakteer to unlock unlimited battles.");
+            return;
+        }
+        if (!userData.isSpecialUser) {
+            await updateDoc(currentUserDocRef, { battlesPlayedToday: userData.battlesPlayedToday + 1 });
+        }
+        window.location.href = "battle.html"; 
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", () => { signOut(auth).then(() => { window.location.href = "login-signup.html"; }); });
+    document.getElementById("sendCommentBtn").addEventListener("click", () => {
+        const comment = document.getElementById("devComment").value;
+        if(comment.trim() === "") { alert("Please write something first."); } 
+        else { alert("Message sent to the developer! Thank you for the feedback."); document.getElementById("devComment").value = ""; }
+    });
+</script>
+</body>
+</html>
