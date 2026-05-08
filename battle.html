@@ -92,7 +92,7 @@
         .bar-st { height: 100%; background: #00aaff; width: 100%; transition: width 0.3s;}
 
         /* Menu & Buttons */
-        .overlay { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(20, 30, 40, 0.95); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; padding: 20px; box-sizing: border-box; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(20, 30, 40, 0.95); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; padding: 20px; box-sizing: border-box; }
         .hidden { display: none !important; }
         h1 { color: #00ffcc; text-shadow: 2px 2px 0 #000; font-size: 26px; text-transform: uppercase; margin-top:0;} 
         .draft-box { background: rgba(0,0,0,0.5); border: 2px solid #00ffcc; border-radius: 8px; padding: 20px; text-align: center; width: 100%; max-width: 600px;}
@@ -158,7 +158,12 @@
     </div>
 
     <div id="turn-overlay" class="overlay hidden" style="background:rgba(0,0,0,0.8); z-index:100;"><h2>ENEMY IS THINKING...</h2></div>
-    <div id="end-screen" class="overlay hidden" style="z-index:2000;"><h1 id="end-title">CONCLUDED</h1></div>
+    <div id="end-screen" class="overlay hidden" style="z-index:2000; background:rgba(10,14,20,0.92); justify-content:flex-start; align-items:stretch; padding:0;">
+        <div style="width:100%; height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 12px; box-sizing:border-box;">
+            <h1 id="end-title" style="text-align:center; margin-bottom:14px;">CONCLUDED</h1>
+            <div id="report-content" style="width:100%; max-width:520px; margin:0 auto; display:flex; flex-direction:column; gap:10px; padding-bottom:30px;"></div>
+        </div>
+    </div>
     
     <div id="p-stay" class="pad"><button class="abtn" style="background:#ffcc00; color:#000;" id="b-stay">Face</button></div>
     <div id="p-conf" class="pad"><button class="abtn" style="background:#00cc44; color:#fff;" id="b-ok">Move</button><button class="abtn" style="background:#ff3333; color:#fff;" id="b-can">Can</button></div>
@@ -188,7 +193,7 @@
     };
 
     const STATE = {
-        phase: 'START', units: [], mapData: [], activeUnit: null, pendingTile: null, validTargets: [], 
+        phase: 'START', units: [], mapData: [], activeUnit: null, pendingTile: null, validTargets: [], turnCount: 0,
         hlGroup: new THREE.Group(), faceGroup: new THREE.Group(), tgtGroup: new THREE.Group(), clock: new THREE.Clock(),
         weather: null, wind: null, hitTiles: [] // NEW: Dedicated array just for strict tile raycasting
     };
@@ -398,13 +403,186 @@
         checkBattleEnd: function() {
             let pAlive = STATE.units.filter(u => u.tm === 'player' && u.hp > 0).length;
             let eAlive = STATE.units.filter(u => u.tm === 'enemy' && u.hp > 0).length;
-            
+
             if(pAlive === 0 || eAlive === 0) {
-                STATE.phase = 'END'; document.getElementById('turn-overlay').classList.add('hidden');
-                document.getElementById('end-title').innerText = pAlive > 0 ? "VICTORY ACHIEVED" : "TOTAL DEFEAT";
-                document.getElementById('end-title').style.color = pAlive > 0 ? "#00ff44" : "#ff3333";
-                document.getElementById('end-screen').classList.remove('hidden');
+                STATE.phase = 'END';
+                document.getElementById('turn-overlay').classList.add('hidden');
                 document.getElementById('weather-compass-group').classList.add('hidden');
+
+                const isWin = pAlive > 0;
+
+                // ── collect stats ──────────────────────────────────────────
+                const playerUnits = STATE.units.filter(u => u.tm === 'player');
+                const enemyUnits  = STATE.units.filter(u => u.tm === 'enemy');
+                let pTotalDmg = 0, eTotalDmg = 0, pKills = 0;
+                playerUnits.forEach(u => pTotalDmg += u.dmgDealt);
+                enemyUnits.forEach(u => { eTotalDmg += u.dmgDealt; if(u.hp <= 0) pKills++; });
+
+                // best player unit by dmg
+                const bestPlayerUnit = [...playerUnits].sort((a,b) => b.dmgDealt - a.dmgDealt)[0];
+                const unitDesc = {
+                    sword:  { why: 'Balanced front-liner. High HP absorbs punishment while holding the line.' },
+                    archer: { why: 'Range pressure unit. Applies damage from safety before melee closes.' },
+                    horse:  { why: 'Fastest flanker. Caught enemies off-guard with wide sweeping approaches.' },
+                    spear:  { why: 'Anti-cavalry anchor. Controlled spacing and punished charge attempts.' }
+                };
+
+                // bandit formation analysis
+                const eCounts = {};
+                enemyUnits.forEach(u => { eCounts[u.type] = (eCounts[u.type]||0)+1; });
+                const dominantEnemy = Object.entries(eCounts).sort((a,b)=>b[1]-a[1])[0][0];
+                const formationTitles = {
+                    sword:  'Iron Wall', archer: 'Storm Volley', horse: 'Blitz Surge', spear: 'Phalanx Press'
+                };
+                const formationDesc = {
+                    sword:  'Heavy infantry block. Designed to grind attrition until your stamina collapses.',
+                    archer: 'Ranged suppression. Aims to drain HP from range before you can close distance.',
+                    horse:  'Speed-rush formation. Tries to overwhelm your flanks before you can regroup.',
+                    spear:  'Defensive wall. Baits your cavalry and punishes aggression with counter-range.'
+                };
+
+                // AI difficulty read (based on turns taken and player losses)
+                const pLosses = playerUnits.filter(u => u.hp <= 0).length;
+                let aiLevel, aiTitle;
+                if (STATE.turnCount <= 4 && pLosses === 0)        { aiLevel = 'Light';   aiTitle = 'Reckless Charge'; }
+                else if (STATE.turnCount <= 7 && pLosses <= 1)    { aiLevel = 'Medium';  aiTitle = 'Steady Advance'; }
+                else if (pLosses >= 2 && eTotalDmg > pTotalDmg)  { aiLevel = 'Legend';  aiTitle = 'Tactical Mastery'; }
+                else                                               { aiLevel = 'Smart';   aiTitle = 'Calculated Push'; }
+
+                // bandit aim analysis (what they targeted)
+                const mostAttacked = [...playerUnits].sort((a,b) => (b.mHp - b.hp) - (a.mHp - a.hp))[0];
+                const aiAim = mostAttacked
+                    ? `Focused fire on your ${mostAttacked.type} — targeting your ${mostAttacked.type === 'archer' ? 'ranged threat' : mostAttacked.type === 'horse' ? 'mobility' : 'frontline anchor'}.`
+                    : 'Spread pressure across your formation with no clear priority.';
+
+                // bandit leader farewell
+                const margin = pTotalDmg > 0 ? Math.round((pTotalDmg - eTotalDmg) / Math.max(pTotalDmg, eTotalDmg) * 100) : 0;
+                const closeMatch = Math.abs(margin) < 20;
+
+                const winFarewells = [
+                    `"${closeMatch ? 'Lucky draw, commander. Next time the ground bleeds different.' : 'You fought well. My lands remain mine — come if you dare.'}"`,
+                    `"${closeMatch ? 'Almost had you there. Almost.' : 'My territories stand. I will be watching the horizon.'}"`,
+                    `"${closeMatch ? 'Do not mistake survival for strength.' : 'The battle ends here. My ground, my rule.'}"`,
+                    `"${closeMatch ? 'A coin flip. I have seen worse.' : 'You hold today. Tomorrow belongs to me.'}"`,
+                ];
+                const loseFarewells = [
+                    `"${closeMatch ? 'You barely made it. I will be waiting.' : 'We are done here. Regroup and think again.'}"`,
+                    `"${closeMatch ? 'A narrow road you walked. I will widen it next time.' : 'Retreat is not failure. It is patience.'}"`,
+                    `"${closeMatch ? 'Closer than I expected from you.' : 'This formation fails. I will bring another.'}"`,
+                    `"${closeMatch ? 'Count your breath. I count my steps back.' : 'You win a skirmish. The war has many roads.'}"`,
+                ];
+                const farewellPool = isWin ? winFarewells : loseFarewells;
+                const farewell = farewellPool[Math.floor(Math.random() * farewellPool.length)];
+
+                // ── card style ────────────────────────────────────────────
+                const card = (title, body) => `
+                    <div style="background:rgba(255,255,255,0.93); border-radius:10px; border:1.5px solid #ddd;
+                                padding:12px 14px; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+                        <div style="font-size:10px; font-weight:700; letter-spacing:1.5px; color:#888;
+                                    text-transform:uppercase; margin-bottom:8px;">${title}</div>
+                        ${body}
+                    </div>`;
+
+                const unitColor = { sword:'#1565c0', archer:'#6a1b9a', horse:'#1b5e20', spear:'#bf360c' };
+
+                // ── UNIT LISTING ──────────────────────────────────────────
+                let unitRows = '';
+                const allUnits = [...playerUnits, ...enemyUnits];
+                allUnits.forEach(u => {
+                    const alive = u.hp > 0;
+                    const isBandit = u.tm === 'enemy';
+                    const nameColor = isBandit ? '#000' : (unitColor[u.type] || '#333');
+                    const nameFw = isBandit ? '800' : '700';
+                    const hpPct = Math.round((u.hp / u.mHp) * 100);
+                    const hpBarColor = hpPct > 50 ? '#4caf50' : hpPct > 20 ? '#ff9800' : '#f44336';
+                    const rowBg = alive ? '#fff' : 'rgba(0,0,0,0.04)';
+                    const opacity = alive ? '1' : '0.45';
+                    unitRows += `
+                        <div style="display:flex; align-items:center; gap:8px; padding:7px 8px;
+                                    background:${rowBg}; border:1.5px solid #e0e0e0; border-radius:7px;
+                                    opacity:${opacity}; margin-bottom:5px;">
+                            <div style="width:34px; height:34px; border:2px solid ${nameColor}; border-radius:6px;
+                                        display:flex; align-items:center; justify-content:center;
+                                        font-size:18px; background:#f8f8f8; flex-shrink:0;">
+                                ${CONFIG.classes[u.type].sign}
+                            </div>
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-weight:${nameFw}; color:${nameColor}; font-size:12px; text-transform:uppercase; letter-spacing:.5px;">
+                                    ${isBandit ? '☠ Bandit' : '⚔ Comrade'} · ${u.type}
+                                </div>
+                                <div style="margin-top:3px; height:5px; background:#eee; border-radius:3px; overflow:hidden;">
+                                    <div style="width:${hpPct}%; height:100%; background:${hpBarColor}; border-radius:3px; transition:width .4s;"></div>
+                                </div>
+                            </div>
+                            <div style="text-align:right; flex-shrink:0;">
+                                <div style="font-size:11px; font-weight:700; color:#333;">${u.dmgDealt} dmg</div>
+                                <div style="font-size:9px; color:#999; margin-top:1px;">${alive ? u.hp + ' hp left' : 'fallen'}</div>
+                            </div>
+                        </div>`;
+                });
+
+                // ── BEST UNIT ─────────────────────────────────────────────
+                const bestCard = bestPlayerUnit ? card('⭐ Today\'s Best Unit', `
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="font-size:28px; width:42px; height:42px; border:2px solid ${unitColor[bestPlayerUnit.type]||'#333'};
+                                    border-radius:8px; display:flex; align-items:center; justify-content:center; background:#f5f5f5;">
+                            ${CONFIG.classes[bestPlayerUnit.type].sign}
+                        </div>
+                        <div>
+                            <div style="font-weight:800; font-size:13px; color:${unitColor[bestPlayerUnit.type]||'#333'}; text-transform:uppercase;">
+                                ${bestPlayerUnit.type}
+                            </div>
+                            <div style="font-size:11px; color:#555; margin-top:3px; line-height:1.4;">
+                                ${unitDesc[bestPlayerUnit.type]?.why || ''}
+                            </div>
+                        </div>
+                    </div>`) : '';
+
+                // ── BANDIT REPORT ─────────────────────────────────────────
+                const banditCard = card('☠ Bandit Intel', `
+                    <div style="display:flex; flex-direction:column; gap:6px; font-size:11px; color:#333; line-height:1.5;">
+                        <div><span style="font-weight:700; color:#000;">Main Power:</span>
+                            ${CONFIG.classes[dominantEnemy].sign} ${dominantEnemy} — ${eCounts[dominantEnemy]} unit${eCounts[dominantEnemy]>1?'s':''}</div>
+                        <div><span style="font-weight:700; color:#000;">Formation:</span>
+                            <span style="color:#b71c1c; font-weight:700;">${formationTitles[dominantEnemy]}</span> —
+                            ${formationDesc[dominantEnemy]}</div>
+                        <div><span style="font-weight:700; color:#000;">Against You:</span>
+                            ${aiAim}</div>
+                        <div><span style="font-weight:700; color:#000;">AI Behavior:</span>
+                            <span style="color:#1565c0; font-weight:700;">${aiLevel} · ${aiTitle}</span></div>
+                        <div style="margin-top:4px; padding:8px 10px; background:rgba(0,0,0,0.04);
+                                    border-left:3px solid #333; border-radius:4px; font-style:italic;">
+                            ${farewell}
+                        </div>
+                    </div>`);
+
+                // ── SUMMARY BAR ────────────────────────────────────────────
+                const summaryCard = card('📊 Match Summary', `
+                    <div style="display:flex; justify-content:space-around; text-align:center;">
+                        <div><div style="font-size:22px; font-weight:800; color:#1565c0;">${STATE.turnCount}</div>
+                             <div style="font-size:9px; color:#888; text-transform:uppercase; letter-spacing:1px;">Turns</div></div>
+                        <div><div style="font-size:22px; font-weight:800; color:#2e7d32;">${pTotalDmg}</div>
+                             <div style="font-size:9px; color:#888; text-transform:uppercase; letter-spacing:1px;">Your Dmg</div></div>
+                        <div><div style="font-size:22px; font-weight:800; color:#f57f17;">${pKills}</div>
+                             <div style="font-size:9px; color:#888; text-transform:uppercase; letter-spacing:1px;">Kills</div></div>
+                        <div><div style="font-size:22px; font-weight:800; color:#b71c1c;">${eTotalDmg}</div>
+                             <div style="font-size:9px; color:#888; text-transform:uppercase; letter-spacing:1px;">Bandit Dmg</div></div>
+                    </div>`);
+
+                // ── RETURN BUTTON ──────────────────────────────────────────
+                const returnBtn = `<button class="btn-start" style="width:100%; margin-top:4px; border-radius:8px;"
+                    onclick="window.finishGameAndSave(${isWin})">RETURN TO COMMAND CENTER</button>`;
+
+                document.getElementById('report-content').innerHTML =
+                    card('⚔ Unit Battle Log', unitRows) +
+                    bestCard +
+                    banditCard +
+                    summaryCard +
+                    returnBtn;
+
+                document.getElementById('end-title').innerText = isWin ? "VICTORY ACHIEVED" : "TOTAL DEFEAT";
+                document.getElementById('end-title').style.color = isWin ? "#00ff44" : "#ff3333";
+                document.getElementById('end-screen').classList.remove('hidden');
             }
         }
     };
@@ -641,7 +819,7 @@
             
             const nextBot = () => { 
                 if(STATE.phase === 'END') return; 
-                if(idx >= en.length || pl.length === 0) { setTimeout(() => { STATE.units.forEach(u => u.act = 0); document.getElementById('turn-overlay').classList.add('hidden'); STATE.phase = 'IDLE'; COMBAT.updateVision(); }, 1000); return; }
+                if(idx >= en.length || pl.length === 0) { STATE.turnCount++; setTimeout(() => { STATE.units.forEach(u => u.act = 0); document.getElementById('turn-overlay').classList.add('hidden'); STATE.phase = 'IDLE'; COMBAT.updateVision(); }, 1000); return; }
                 let b = en[idx]; STATE.activeUnit = b; 
                 let cp = pl[0], md = 999; pl.forEach(p => { let d = Math.abs(p.x - b.x) + Math.abs(p.z - b.z); if(d < md) { md = d; cp = p; }}); b.tTgt = cp;
                 
@@ -700,7 +878,130 @@
         }
     };
 
-    window.onload = () => { UI.initDraft(); ENGINE.init(); };
+    window.onload = () => { UI.initDraft(); ENGINE.init(); window._battleState = STATE; };
+</script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, updateDoc, setDoc, increment, addDoc, collection, serverTimestamp }
+        from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAp9xtIX74D6Heihn6O-7muB0a6mbQno7Y",
+        authDomain: "glittz-of-horizon.firebaseapp.com",
+        projectId: "glittz-of-horizon",
+        storageBucket: "glittz-of-horizon.firebasestorage.app",
+        messagingSenderId: "862322605914",
+        appId: "1:862322605914:web:6f2c26e083dee7857d3d63"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+    let currentUser = null;
+
+    // ── AUTH GUARD ─────────────────────────────────────────────────────────────
+    onAuthStateChanged(auth, (user) => {
+        if (!user) {
+            window.location.href = "login-signup.html";
+        } else {
+            currentUser = user;
+        }
+    });
+
+    // ── FINISH & SAVE ──────────────────────────────────────────────────────────
+    window.finishGameAndSave = async function(isVictory) {
+
+        // Show saving state on button
+        const btn = document.querySelector('#report-content .btn-start');
+        if (btn) { btn.disabled = true; btn.innerText = "Saving..."; }
+
+        if (!currentUser) { window.location.href = "login-signup.html"; return; }
+
+        const S      = window._battleState || {};
+        const units  = S.units  || [];
+        const turns  = S.turnCount || 0;
+
+        const playerUnits = units.filter(u => u.tm === 'player');
+        const enemyUnits  = units.filter(u => u.tm === 'enemy');
+
+        const pDmg   = playerUnits.reduce((s, u) => s + u.dmgDealt, 0);
+        const eDmg   = enemyUnits.reduce((s, u) => s + u.dmgDealt, 0);
+        const pKills = enemyUnits.filter(u => u.hp <= 0).length;
+        const pSurv  = playerUnits.filter(u => u.hp > 0).length;
+        const pLost  = playerUnits.filter(u => u.hp <= 0).length;
+
+        // Unit type usage
+        const typeCount = { sword: 0, archer: 0, horse: 0, spear: 0 };
+        playerUnits.forEach(u => { if (typeCount[u.type] !== undefined) typeCount[u.type]++; });
+
+        const userRef = doc(db, "users", currentUser.uid);
+
+        try {
+            // ── Read current doc first (needed for max/avg calculations) ──
+            const snap = await getDoc(userRef);
+            const d    = snap.exists() ? snap.data() : {};
+
+            const today      = new Date().toDateString();
+            const lastDate   = d.lastPlayedDate || "";
+            const resetToday = lastDate !== today;
+
+            const prevWins      = d.wins  || 0;
+            const prevMaxDmg    = d.maxDamagePerTurn || 0;
+            const prevTotalTurns= d.totalTurnsTaken  || 0;
+            const prevTotalDmg  = d.totalDamageDealt || 0;
+
+            // Avg turns to win — running average
+            let newAvgTurn = d.avgTurnToWin || 0;
+            if (isVictory) {
+                const wins = prevWins + 1;
+                newAvgTurn = Math.round(((d.avgTurnToWin || 0) * prevWins + turns) / wins);
+            }
+
+            // Max single-match damage dealt (per-match, not per-turn)
+            const newMaxDmg = Math.max(prevMaxDmg, pDmg);
+
+            // Avg dmg per turn across all turns ever played
+            const newTotalTurns = prevTotalTurns + turns;
+            const newTotalDmg   = prevTotalDmg + pDmg;
+
+            await updateDoc(userRef, {
+                wins:               isVictory ? increment(1) : increment(0),
+                losses:             isVictory ? increment(0) : increment(1),
+                totalDamageDealt:   increment(pDmg),
+                totalTurnsTaken:    increment(turns),
+                avgTurnToWin:       newAvgTurn,
+                maxDamagePerTurn:   newMaxDmg,
+                infantryUsage:      increment(typeCount.sword),
+                archerUsage:        increment(typeCount.archer),
+                horsemanUsage:      increment(typeCount.horse),
+                spearUsage:         increment(typeCount.spear),
+                battlesPlayedToday: resetToday ? 1 : increment(1),
+                lastPlayedDate:     today,
+            });
+
+            // ── Save match to history subcollection ──
+            await addDoc(collection(db, "users", currentUser.uid, "matchHistory"), {
+                result:    isVictory ? "win" : "loss",
+                turns:     turns,
+                pDmg:      pDmg,
+                eDmg:      eDmg,
+                kills:     pKills,
+                survived:  pSurv,
+                lost:      pLost,
+                unitTypes: typeCount,
+                mode:      "bandit",
+                timestamp: serverTimestamp()
+            });
+
+        } catch (err) {
+            console.error("Save failed:", err);
+            if (btn) { btn.disabled = false; btn.innerText = "RETRY — RETURN TO BASE"; }
+            return;
+        }
+
+        window.location.href = "profile.html";
+    };
 </script>
 </body>
 </html>

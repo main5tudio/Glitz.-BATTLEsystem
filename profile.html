@@ -245,33 +245,32 @@
     }
 
     // Class Pattern Logic
-    function getPatternTitle(inf, arch, horse) {
-        const total = inf + arch + horse;
+    function getPatternTitle(inf, arch, horse, spear) {
+        const total = inf + arch + horse + spear;
         if (total === 0) return "Recruit";
+        const i = inf/total, a = arch/total, h = horse/total, s = spear/total;
 
-        const i = inf / total, a = arch / total, h = horse / total;
-
-        if (i >= 0.65 && a <= 0.35 && h <= 0.1) return "Iron Linebreaker"; // 3:1:0
-        if (i <= 0.35 && a <= 0.1 && h >= 0.65) return "Blitz Cavalry"; // 1:0:3
-        if (i <= 0.1 && a >= 0.65 && h <= 0.35) return "Phantom Skirmisher"; // 0:3:1
-        
-        if (i >= 0.4 && a >= 0.2 && h >= 0.2) return "Balanced Vanguard"; // 2:1:1
-        if (i >= 0.2 && a >= 0.4 && h >= 0.2) return "Eagle Eye Marksman"; // 1:2:1
-        if (i >= 0.2 && a >= 0.2 && h >= 0.4) return "Swift Flanker"; // 1:1:2
-
+        if (i >= 0.65 && a <= 0.35 && h <= 0.1)  return "Iron Linebreaker";
+        if (h >= 0.65 && i <= 0.35 && a <= 0.1)  return "Blitz Cavalry";
+        if (a >= 0.65 && i <= 0.1  && h <= 0.35) return "Phantom Skirmisher";
+        if (s >= 0.5)                              return "Phalanx Warden";
+        if (i >= 0.4 && a >= 0.2 && h >= 0.2)    return "Balanced Vanguard";
+        if (a >= 0.4 && i >= 0.2 && h >= 0.2)    return "Eagle Eye Marksman";
+        if (h >= 0.4 && i >= 0.2 && a >= 0.2)    return "Swift Flanker";
         return "Tactical Commander";
     }
 
     function getPatternDesc(title) {
         const descs = {
-            "Iron Linebreaker": "Tembok pertahanan pejal, dominasi garis depan.",
-            "Blitz Cavalry": "Pasukan kilat pengacau formasi musuh.",
-            "Phantom Skirmisher": "Taktik hit-and-run mematikan dari bayang-bayang.",
-            "Balanced Vanguard": "Seimbang dan tangguh di segala situasi medan tempur.",
-            "Eagle Eye Marksman": "Fokus serangan jarak jauh yang presisi.",
-            "Swift Flanker": "Mobilitas tinggi untuk manuver serangan sayap.",
-            "Tactical Commander": "Ahli strategi adaptif.",
-            "Recruit": "Memulai perjalanan di medan pertempuran."
+            "Iron Linebreaker":    "Tembok pertahanan pejal, dominasi garis depan.",
+            "Blitz Cavalry":       "Pasukan kilat pengacau formasi musuh.",
+            "Phantom Skirmisher":  "Taktik hit-and-run mematikan dari bayang-bayang.",
+            "Phalanx Warden":      "Dinding tombak tak tergoyahkan. Musuh terpental sebelum menyentuh.",
+            "Balanced Vanguard":   "Seimbang dan tangguh di segala situasi medan tempur.",
+            "Eagle Eye Marksman":  "Fokus serangan jarak jauh yang presisi.",
+            "Swift Flanker":       "Mobilitas tinggi untuk manuver serangan sayap.",
+            "Tactical Commander":  "Ahli strategi adaptif.",
+            "Recruit":             "Memulai perjalanan di medan pertempuran."
         };
         return descs[title] || descs["Recruit"];
     }
@@ -292,9 +291,10 @@
         const avgTime = userData.avgTimePerTurn || 0;
         const maxDmg = userData.maxDamagePerTurn || 0; // The highest damage in a single turn
         
-        const inf = userData.infantryUsage || 0, arch = userData.archerUsage || 0, horse = userData.horsemanUsage || 0;
+        const inf = userData.infantryUsage || 0, arch = userData.archerUsage || 0,
+              horse = userData.horsemanUsage || 0, spear = userData.spearUsage || 0;
         const avgDmgPerTurn = totalTurns > 0 ? Math.floor(totalDmg / totalTurns) : 0;
-        const currentTitle = getPatternTitle(inf, arch, horse);
+        const currentTitle = getPatternTitle(inf, arch, horse, spear);
 
         document.getElementById("stat-wins").innerText = w;
         document.getElementById("stat-losses").innerText = l;
@@ -337,10 +337,10 @@
         } else {
             userData = {
                 username: user.displayName || "Commander", avatarId: "male_infantry",
-                wins: 0, losses: 0, totalDamageDealt: 0, totalTurnsTaken: 0, 
+                wins: 0, losses: 0, totalDamageDealt: 0, totalTurnsTaken: 0,
                 avgTurnToWin: 0, avgTimePerTurn: 0, maxDamagePerTurn: 0,
-                infantryUsage: 0, archerUsage: 0, horsemanUsage: 0,
-                battlesPlayedToday: 0, isSpecialUser: false
+                infantryUsage: 0, archerUsage: 0, horsemanUsage: 0, spearUsage: 0,
+                battlesPlayedToday: 0, lastPlayedDate: "", isSpecialUser: false
             };
             await setDoc(userDocRef, userData);
         }
@@ -351,7 +351,7 @@
     async function initPresence() {
         if (!currentUser) return;
         const presenceRef = doc(db, "presence", currentUser.uid);
-        const title = getPatternTitle(userData.infantryUsage||0, userData.archerUsage||0, userData.horsemanUsage||0);
+        const title = getPatternTitle(userData.infantryUsage||0, userData.archerUsage||0, userData.horsemanUsage||0, userData.spearUsage||0);
         
         await setDoc(presenceRef, {
             uid: currentUser.uid, username: userData.username, title: title,
@@ -443,9 +443,16 @@
         }
     });
 
-    document.getElementById("banditBtn").addEventListener("click", () => {
-        // Daily energy check
-        let battlesToday = userData.battlesPlayedToday || 0;
+    document.getElementById("banditBtn").addEventListener("click", async () => {
+        const today    = new Date().toDateString();
+        const lastDate = userData.lastPlayedDate || "";
+        // Reset counter if new day
+        if (lastDate !== today) {
+            userData.battlesPlayedToday = 0;
+            userData.lastPlayedDate = today;
+            if (userDocRef) await updateDoc(userDocRef, { battlesPlayedToday: 0, lastPlayedDate: today });
+        }
+        const battlesToday = userData.battlesPlayedToday || 0;
         if (!userData.isSpecialUser && battlesToday >= 8) {
             alert("No daily energy left. Support us on Trakteer for unlimited battles.");
             return;
