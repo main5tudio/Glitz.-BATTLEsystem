@@ -1,0 +1,29 @@
+name: Extract Assets
+
+on:
+  workflow_dispatch:
+
+jobs:
+  extract-and-commit:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Extract .asset.zip
+        run: |
+          unzip -q .asset.zip -d .
+      
+      - name: Remove .asset.zip file
+        run: |
+          rm .asset.zip
+      
+      - name: Commit extracted assets
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .asset/
+          git rm .asset.zip || true
+          git commit -m "Extract asset files from .asset.zip"
+          git push
