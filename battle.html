@@ -105,6 +105,7 @@
         .pad { display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; gap: 10px; }
         .abtn { padding: 12px 24px; font-weight: bold; border-radius: 6px; cursor: pointer; border: 2px solid #fff; font-size: 14px; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.4);}
     </style>
+    <script src="js/game.config.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
@@ -171,25 +172,37 @@
     <div id="p-sel" class="pad"><button class="abtn" style="background:#ff3333; color:#fff;" id="b-can-sel">Cancel</button></div>
 
 <script>
+    // ═══════════════════════════════════════════════════════
+    //  CONFIG BRIDGE — semua nilai dari js/game.config.js
+    //  Jangan edit di sini — edit di js/game.config.js
+    // ═══════════════════════════════════════════════════════
     const CONFIG = {
-        gridX: 10, gridZ: 14, tileSize: 1.0, tileGap: 0.02, walkSpeed: 4.5,
-        classes: {
-            'sword':  { sign: '⚔️', move: 3, range: 1, hp: 1000, color: 0x607d8b, shape: 'square', drain: 15, perk: 'Balanced Infantry.' }, 
-            'archer': { sign: '🏹', move: 3, range: 3, hp: 800,  color: 0x5c6bc0, shape: 'triangle', drain: 15, perk: 'Wind affects arrows.' },
-            'horse':  { sign: '♞', move: 5, range: 1, hp: 1200, color: 0x424242, shape: 'long_rect', drain: 15, perk: 'Flank causes run.' },
-            'spear':  { sign: '⇂', move: 2, range: 1, hp: 1000, color: 0x8d6e63, shape: 'stick', drain: 25, perk: 'Pushback horses.' } 
-        },
+        gridX:    GLITZ_CONFIG.battle.gridX,
+        gridZ:    GLITZ_CONFIG.battle.gridZ,
+        tileSize: GLITZ_CONFIG.battle.tileSize,
+        tileGap:  GLITZ_CONFIG.battle.tileGap,
+        walkSpeed:GLITZ_CONFIG.battle.walkSpeed,
+
+        classes: Object.fromEntries(
+            Object.entries(GLITZ_CONFIG.units).map(([key, u]) => [key, {
+                sign:  u.sign,
+                move:  u.move,
+                range: u.range,
+                hp:    u.hp,
+                color: u.color,
+                shape: u.shape,
+                drain: u.stDrain,
+                perk:  u.perk,
+            }])
+        ),
+
         weathers: [
-            { id: 'Sun', icon: '☀️', cond: 'Bright: High Stamina Drain' }, 
-            { id: 'Moon', icon: '🌙', cond: 'Night: Ally Vision Limited to 5' }, 
-            { id: 'Rain', icon: '🌧️', cond: 'Mud: Move & Vision -1' }
+            { id: 'Sun',  icon: GLITZ_CONFIG.weather.sun.icon,  cond: 'Bright: High Stamina Drain' },
+            { id: 'Moon', icon: GLITZ_CONFIG.weather.moon.icon, cond: 'Night: Ally Vision Limited to 5' },
+            { id: 'Rain', icon: GLITZ_CONFIG.weather.rain.icon, cond: 'Mud: Move & Vision -1' },
         ],
-        winds: [
-            {id:'N', deg: 0, vec:{x:0, z:-1}}, {id:'NE', deg: 45, vec:{x:1, z:-1}},
-            {id:'E', deg: 90, vec:{x:1, z:0}}, {id:'SE', deg: 135, vec:{x:1, z:1}},
-            {id:'S', deg: 180, vec:{x:0, z:1}}, {id:'SW', deg: 225, vec:{x:-1, z:1}},
-            {id:'W', deg: 270, vec:{x:-1, z:0}}, {id:'NW', deg: 315, vec:{x:-1, z:-1}}
-        ]
+
+        winds: GLITZ_CONFIG.winds,
     };
 
     const STATE = {
