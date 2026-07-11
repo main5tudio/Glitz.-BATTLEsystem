@@ -181,115 +181,19 @@
         </div>
     </div>
 
-    <!--
-      ==========================================================================
-      WHAT: "Support Develop" card — rebuilt to match your sketch layout.
-      CHANGE FROM PREVIOUS VERSION: Ko-fi is no longer a JS-powered floating
-             widget (overlay-widget.js). It's now a plain <a> link, styled
-             identically to Trakteer, sitting inside one shared bordered box.
-      WHY THIS IS BETTER:
-             1. Matches your sketch exactly — both buttons live in one card,
-                Trakteer on top, Ko-fi below, each with its own caption line.
-             2. No JS = no more "Ko-fi widget failed to load" warning in
-                Claude's preview (that error only ever existed because of
-                the external overlay-widget.js script; a plain link has
-                nothing to fail).
-             3. No floating bubble covering other UI on the page anymore.
-      LEARNING: A donation "widget" isn't required for a donation link to
-             work — Ko-fi/Trakteer/almost every platform gives you a normal
-             URL. Widgets just add visual flair (animated bubble, popup) at
-             the cost of an external script dependency. Plain links are
-             simpler, faster to load, and have nothing that can break.
-      ==========================================================================
-    -->
-    <div class="segment" style="border: 2px solid #e8a33d; border-radius: 12px;">
+    <div class="segment">
         <div class="segment-title">Support Development</div>
-
-        <!--
-          WHAT: Opening progress message — replaces the grey divider that
-                 used to sit directly under the title.
-          LEARNING: margin-bottom here is what creates the "bit spacial
-                 between this to each button" gap you asked for — it's the
-                 space below THIS paragraph, pushing the Trakteer button
-                 further down rather than sitting flush against it.
-        -->
-        <p style="width:100%; box-sizing:border-box; font-size:11px; color:#57534e; text-align:center; margin: 4px 0 20px; line-height:1.6;">
-            We are still working hard on every goal and improvement. Monthly updates will be provided, while we continue promoting our game to gamer communities worldwide.
+        <p style="font-size:11px; color:#52525b; margin-bottom:8px; text-align:center;">
+            Help maintain the server & support developing further.
         </p>
+        <a href="https://trakteer.id/cloudeight.main5tudio.dev" target="_blank" class="btn-trakteer">❤️ Dukung Saya di Trakteer</a>
 
-        <a id="trakteerBtn" href="https://trakteer.id/cloudeight.main5tudio.dev" target="_blank" class="btn-trakteer" style="background:#c0603d;">Support via <b>Trakteer</b> 🍲</a>
-        <p style="font-size:11px; color:#78716c; text-align:center; margin: 4px 0 22px;">
-            Treat us to meals and a refresh. <b>IDR default.</b>
+              <p style="font-size:11px; color:#52525b; margin-bottom:8px; text-align:center;">
+            Help maintain the server & support developing further.
         </p>
-
-        <a id="kofiBtn" href="https://ko-fi.com/main5tudiodev" target="_blank" class="btn-trakteer" style="background:#d69245;">Support via <b>KO-FI</b> ☕ 🕶️</a>
-        <p style="font-size:11px; color:#78716c; text-align:center; margin: 4px 0 22px;">
-            Saving toward better hardware and registrations. <b>USD default.</b>
-        </p>
-
-        <!--
-          WHAT: Footer divider + reward-teaser sentence.
-          LEARNING: Same <hr> pattern as before, just with more margin above
-                 it now ("bit spacial to grey line"). The footer paragraph
-                 below uses width:100% + box-sizing:border-box so it fills
-                 the card edge-to-edge instead of shrinking to fit its text,
-                 while text-align:center keeps the text itself centered
-                 within that full-width strip.
-        -->
-        <hr style="border:none; border-top:1px solid #d6d3d1; margin: 10px 0 12px;">
-        <p style="width:100%; box-sizing:border-box; font-size:11px; color:#a8a29e; text-align:center; margin: 0 0 8px; line-height:1.5;">
-            We may send back rewards and appreciation gifts to supporters — PDFs, badges, extra tokens, and more.
-        </p>
-
-        <!--
-          ==========================================================================
-          WHAT: Replaces the old email input box entirely. Tapping either
-                 support button now does three things automatically, with
-                 NO amount/nominal ever asked or known:
-                 1. Posts a short public confirmation into the Message
-                    Board (same "supportMessages" collection already
-                    rendered there) — e.g. "🍲 [name] supported via
-                    Trakteer" — visible to other users as social proof.
-                 2. Logs a detailed private record into a new
-                    "supporterLog" collection — timestamp, platform,
-                    userId, username — meant for YOU to view as an
-                    admin table (e.g. in the Firebase console's Firestore
-                    tab, or a future admin.html page), not shown publicly.
-                 3. Sends YOU an email notification, via EmailJS (see
-                    setup note below), to main5tudio.develop@gmail.com.
-          WHY NOT JUST FIRESTORE FOR THE EMAIL PART: Firestore only
-                 stores data — it can't send an email by itself. Actually
-                 emailing you requires either a paid Firebase Cloud
-                 Function (backend code, needs the Blaze billing plan) or
-                 a client-side email service. EmailJS was chosen because
-                 it works entirely from the browser with no backend and
-                 no paid plan required (free tier covers ~200 emails/month),
-                 which matches your no-backend, Acode-only workflow.
-          SETUP YOU STILL NEED TO DO (can't be done for you, it's account-
-                 specific): 
-                 1. Create a free account at https://www.emailjs.com
-                 2. Add an Email Service (connect your Gmail) and an Email
-                    Template — EmailJS's dashboard walks through both.
-                 3. Replace the three placeholders below —
-                    YOUR_EMAILJS_PUBLIC_KEY, YOUR_SERVICE_ID,
-                    YOUR_TEMPLATE_ID — with the values EmailJS gives you.
-                 Until those are filled in, the Firestore logging (steps 1
-                 and 2 above) still works fine on its own — only the email
-                 step will silently fail (caught safely, won't break the
-                 button).
-          ==========================================================================
-        -->
-        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-        <script>
-            (function() {
-                if (typeof emailjs !== 'undefined') {
-                    emailjs.init({ publicKey: "YOUR_EMAILJS_PUBLIC_KEY" });
-                }
-            })();
-        </script>
+        <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#d69245', 'M4M71XRWM2');kofiwidget2.draw();</script> 
+     
     </div>
-
-
 
     <div class="segment">
         <div class="segment-title">Message Board</div>
@@ -309,12 +213,22 @@
 </div>
 
 <script type="module">
-    import {
-        auth, db, onAuthStateChanged, signOut,
-        doc, getDoc, updateDoc, setDoc,
-        collection, query, orderBy, onSnapshot, addDoc, serverTimestamp,
-        ensureUserDoc
-    } from "./js/firebase.config.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, updateDoc, setDoc, collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAp9xtIX74D6Heihn6O-7muB0a6mbQno7Y",
+        authDomain: "glittz-of-horizon.firebaseapp.com",
+        projectId: "glittz-of-horizon",
+        storageBucket: "glittz-of-horizon.firebasestorage.app",
+        messagingSenderId: "862322605914",
+        appId: "1:862322605914:web:6f2c26e083dee7857d3d63"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
     // Vanguard Avatars
     const avatars = [
@@ -421,12 +335,21 @@
     }
 
     // Load Data
-    // ensureUserDoc() dari firebase.config.js = satu-satunya tempat yang
-    // membuat/melengkapi dokumen users/{uid}, jadi skemanya selalu sama
-    // persis dengan yang dibuat saat register di login-signup.html.
     async function loadData(user) {
         userDocRef = doc(db, "users", user.uid);
-        userData = await ensureUserDoc(user);
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists()) {
+            userData = docSnap.data();
+        } else {
+            userData = {
+                username: user.displayName || "Commander", avatarId: "male_infantry",
+                wins: 0, losses: 0, totalDamageDealt: 0, totalTurnsTaken: 0,
+                avgTurnToWin: 0, avgTimePerTurn: 0, maxDamagePerTurn: 0,
+                infantryUsage: 0, archerUsage: 0, horsemanUsage: 0, spearUsage: 0,
+                battlesPlayedToday: 0, lastPlayedDate: "", isSpecialUser: false
+            };
+            await setDoc(userDocRef, userData);
+        }
         renderUserData();
     }
 
@@ -551,57 +474,6 @@
             timestamp: serverTimestamp(), reply: null
         });
         document.getElementById("newMsg").value = "";
-    });
-
-    // WHAT: One shared function that fires whenever a support button is
-    //        tapped. Called once per platform (Trakteer / Ko-fi) below.
-    // LEARNING: Writing this as one reusable function instead of copy-pasting
-    //        the same logic twice means if you ever want to change WHAT
-    //        happens on a support click (add a 3rd platform, change the
-    //        message wording, etc.), you only edit it in one place.
-    async function logSupportClick(platform, icon) {
-        const uid = currentUser?.uid || null;
-        const name = userData?.username || "Someone";
-
-        // 1. Public confirmation posted to the Message Board — no amount,
-        //    just a friendly "this happened" note visible to other users.
-        await addDoc(collection(db, "supportMessages"), {
-            userId: uid, userName: name,
-            message: `${icon} ${name} supported via ${platform}!`,
-            timestamp: serverTimestamp(), reply: null, isSystemNotice: true
-        });
-
-        // 2. Private detailed record for you as admin — full details,
-        //    kept in its own collection so it never mixes with public
-        //    Message Board posts. View it under Firestore > supporterLog
-        //    in your Firebase console, or build a simple admin.html table
-        //    later that queries this collection.
-        await addDoc(collection(db, "supporterLog"), {
-            userId: uid, userName: name, platform: platform,
-            timestamp: serverTimestamp()
-        });
-
-        // 3. Email notification to you — only runs if EmailJS has been
-        //    set up (see the setup note in the HTML above). Wrapped in
-        //    try/catch so a missing/incomplete EmailJS setup never blocks
-        //    steps 1 and 2, or throws a visible error to the user.
-        try {
-            if (typeof emailjs !== 'undefined') {
-                await emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", {
-                    to_email: "main5tudio.develop@gmail.com",
-                    platform: platform, user_name: name, user_id: uid || "guest"
-                });
-            }
-        } catch (err) {
-            console.warn("EmailJS notification skipped (not fully set up yet):", err);
-        }
-    }
-
-    document.getElementById("trakteerBtn").addEventListener("click", () => {
-        logSupportClick("Trakteer", "🍲");
-    });
-    document.getElementById("kofiBtn").addEventListener("click", () => {
-        logSupportClick("Ko-fi", "☕");
     });
 
     document.getElementById("logoutBtn").addEventListener("click", () => signOut(auth));

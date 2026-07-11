@@ -146,23 +146,11 @@ button:active { opacity: 0.8; }
 </script>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAp9xtIX74D6Heihn6O-7muB0a6mbQno7Y",
-      authDomain: "glittz-of-horizon.firebaseapp.com",
-      projectId: "glittz-of-horizon",
-      storageBucket: "glittz-of-horizon.firebasestorage.app",
-      messagingSenderId: "862322605914",
-      appId: "1:862322605914:web:6f2c26e083dee7857d3d63",
-      measurementId: "G-T61YZTLT53"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    import {
+        auth, onAuthStateChanged,
+        registerWithEmail, loginWithEmail,
+        loginWithGoogle, loginWithFacebook
+    } from "./js/firebase.config.js";
 
     // AUTO LOGIN CHECK: If user is already logged in, skip this page
     onAuthStateChanged(auth, (user) => {
@@ -170,10 +158,6 @@ button:active { opacity: 0.8; }
             window.location.href = "profile.html";
         }
     });
-
-    // Setup Social Providers
-    const googleProvider = new GoogleAuthProvider();
-    const facebookProvider = new FacebookAuthProvider();
 
     // UI Toggles
     const loginBox = document.getElementById("loginBox");
@@ -190,14 +174,15 @@ button:active { opacity: 0.8; }
     });
 
     // Standard Email Login
-    document.getElementById("loginBtn").addEventListener("click", () => {
+    document.getElementById("loginBtn").addEventListener("click", async () => {
         const email = document.getElementById("loginEmail").value;
         const password = document.getElementById("loginPassword").value;
         if(!email || !password) return alert("Please enter email and password.");
-        
-        signInWithEmailAndPassword(auth, email, password)
-            .catch((error) => { alert("Login failed: " + error.message); });
-            // Note: onAuthStateChanged handles the redirect automatically!
+
+        try {
+            await loginWithEmail(email, password);
+            // onAuthStateChanged handles the redirect automatically!
+        } catch (error) { alert("Login failed: " + error.message); }
     });
 
     // Standard Email Registration
@@ -208,46 +193,17 @@ button:active { opacity: 0.8; }
         if(!username || !email || !password) return alert("Please fill all fields.");
 
         try {
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-            await updateProfile(user, { displayName: username });
-            
-            // Create user database entry
-            await setDoc(doc(db, "users", user.uid), {
-                username: username,
-                wins: 0, losses: 0, attacks: 0, defenses: 0,
-                favoriteUnit: "None", favoriteUnitRank: "Rookie",
-                battlesPlayedToday: 0,
-                lastBattleDate: new Date().toISOString().split('T')[0],
-                isSpecialUser: false,
-                infantryUsage: 0, archerUsage: 0, horsemanUsage: 0,
-                totalDamageDealt: 0, totalTurnsTaken: 0
-            });
+            await registerWithEmail(username, email, password);
+            // ensureUserDoc() sudah bikin dokumen users/{uid} pakai DEFAULT_USER
             // onAuthStateChanged handles the redirect automatically!
         } catch (error) { alert("Registration Error: " + error.message); }
     });
 
     // Shared function for Social Login (Google & FB)
-    async function handleSocialLogin(provider) {
+    async function handleSocialLogin(loginFn) {
         try {
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-            
-            // Check if this is their first time logging in by checking Firestore
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (!userDoc.exists()) {
-                // First time user! Build their profile doc.
-                await setDoc(doc(db, "users", user.uid), {
-                    username: user.displayName || "Commander",
-                    wins: 0, losses: 0, attacks: 0, defenses: 0,
-                    favoriteUnit: "None", favoriteUnitRank: "Rookie",
-                    battlesPlayedToday: 0,
-                    lastBattleDate: new Date().toISOString().split('T')[0],
-                    isSpecialUser: false,
-                    infantryUsage: 0, archerUsage: 0, horsemanUsage: 0,
-                    totalDamageDealt: 0, totalTurnsTaken: 0
-                });
-            }
+            await loginFn();
+            // ensureUserDoc() di dalam loginFn sudah handle first-time user
             // onAuthStateChanged handles the redirect automatically!
         } catch (error) {
             if (error.code === 'auth/popup-closed-by-user') return; // Ignore if user just closed the popup
@@ -256,8 +212,8 @@ button:active { opacity: 0.8; }
     }
 
     // Attach Social Buttons
-    document.getElementById("googleBtn").addEventListener("click", () => handleSocialLogin(googleProvider));
-    document.getElementById("fbBtn").addEventListener("click", () => handleSocialLogin(facebookProvider));
+    document.getElementById("googleBtn").addEventListener("click", () => handleSocialLogin(loginWithGoogle));
+    document.getElementById("fbBtn").addEventListener("click", () => handleSocialLogin(loginWithFacebook));
 
 </script>
 </body>
